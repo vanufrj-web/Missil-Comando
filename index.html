@@ -1,0 +1,2129 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>MISSILE COMMAND</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@400;700;900&display=swap');
+
+  :root {
+    --green: #00ff88;
+    --red: #ff3333;
+    --blue: #44aaff;
+    --amber: #ffcc00;
+    --dim: #003322;
+    --bg: #000a05;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+  html, body {
+    width: 100%; height: 100%;
+    background: var(--bg);
+    overflow: hidden;
+    font-family: 'Share Tech Mono', monospace;
+    touch-action: none;
+    user-select: none;
+  }
+
+  canvas {
+    display: block;
+    position: absolute;
+    top: 0; left: 0;
+  }
+
+  /* ── HUD ── */
+  #hud {
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    padding: 10px 14px 0;
+    pointer-events: none;
+    z-index: 10;
+  }
+
+  .hud-block { display: flex; flex-direction: column; gap: 2px; }
+
+  .hud-label {
+    font-family: 'Orbitron', monospace;
+    font-size: 9px;
+    color: var(--green);
+    opacity: 0.55;
+    letter-spacing: 2px;
+  }
+
+  .hud-value {
+    font-family: 'Orbitron', monospace;
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--green);
+    text-shadow: 0 0 12px var(--green);
+    letter-spacing: 1px;
+  }
+
+  .hud-center { text-align: center; }
+
+  .hud-lives {
+    display: flex;
+    gap: 6px;
+    margin-top: 4px;
+    justify-content: flex-end;
+  }
+
+  .life-dot {
+    width: 10px; height: 10px;
+    border-radius: 50%;
+    background: var(--green);
+    box-shadow: 0 0 8px var(--green);
+  }
+
+  .life-dot.dead { background: #112; box-shadow: none; border: 1px solid #224; }
+
+  /* ── AMMO ROW ── */
+  #ammo-row { display: none !important; }
+  #ammo-row-hidden {
+    position: absolute;
+    bottom: 58px;
+    left: 0; right: 0;
+    display: flex;
+    justify-content: space-around;
+    align-items: flex-end;
+    padding: 0 10px;
+    pointer-events: none;
+    z-index: 10;
+  }
+
+  .base-info {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    width: 80px;
+  }
+
+  .ammo-pips {
+    display: flex;
+    gap: 3px;
+    flex-wrap: wrap;
+    justify-content: center;
+    max-width: 70px;
+  }
+
+  .pip {
+    width: 5px; height: 8px;
+    background: var(--blue);
+    box-shadow: 0 0 4px var(--blue);
+  }
+
+  .pip.empty { background: #112; box-shadow: none; border: 1px solid #224; }
+
+  .base-label {
+    font-size: 8px;
+    color: var(--blue);
+    opacity: 0.6;
+    letter-spacing: 1px;
+  }
+
+  /* ── OVERLAY SCREENS ── */
+  #overlay {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0,10,5,0.88);
+    z-index: 20;
+    pointer-events: all;
+  }
+
+  #overlay.hidden { display: none; }
+
+  .overlay-title {
+    font-family: 'Orbitron', monospace;
+    font-size: clamp(28px, 8vw, 46px);
+    font-weight: 900;
+    color: var(--green);
+    text-shadow: 0 0 30px var(--green), 0 0 60px var(--green);
+    letter-spacing: 6px;
+    text-align: center;
+    line-height: 1.1;
+    margin-bottom: 8px;
+  }
+
+  .overlay-title.red {
+    color: var(--red);
+    text-shadow: 0 0 30px var(--red), 0 0 60px var(--red);
+  }
+
+  .overlay-sub {
+    font-size: 12px;
+    color: var(--green);
+    opacity: 0.6;
+    letter-spacing: 3px;
+    margin-bottom: 36px;
+  }
+
+  .stat-row {
+    display: flex;
+    gap: 40px;
+    margin-bottom: 32px;
+  }
+
+  .stat-box { text-align: center; }
+
+  .stat-num {
+    font-family: 'Orbitron', monospace;
+    font-size: 26px;
+    font-weight: 700;
+    color: var(--amber);
+    text-shadow: 0 0 12px var(--amber);
+  }
+
+  .stat-lbl {
+    font-size: 9px;
+    color: var(--amber);
+    opacity: 0.55;
+    letter-spacing: 2px;
+    margin-top: 2px;
+  }
+
+  .btn {
+    font-family: 'Orbitron', monospace;
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 3px;
+    color: var(--bg);
+    background: var(--green);
+    border: none;
+    padding: 15px 44px;
+    cursor: pointer;
+    box-shadow: 0 0 24px var(--green);
+    transition: transform 0.1s, box-shadow 0.1s;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .btn:active { transform: scale(0.96); box-shadow: 0 0 10px var(--green); }
+
+  .tip {
+    margin-top: 20px;
+    font-size: 10px;
+    color: var(--green);
+    opacity: 0.35;
+    letter-spacing: 2px;
+    text-align: center;
+    max-width: 240px;
+    line-height: 1.6;
+  }
+
+  /* ── LEVEL BANNER ── */
+  #level-banner {
+    position: absolute;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    font-family: 'Orbitron', monospace;
+    font-size: 22px;
+    font-weight: 700;
+    color: var(--amber);
+    text-shadow: 0 0 20px var(--amber);
+    letter-spacing: 5px;
+    text-align: center;
+    z-index: 15;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.4s;
+  }
+
+  /* ── SCANLINE effect ── */
+  #scanline {
+    position: absolute;
+    inset: 0;
+    background: repeating-linear-gradient(
+      to bottom,
+      transparent 0px,
+      transparent 3px,
+      rgba(0,0,0,0.08) 3px,
+      rgba(0,0,0,0.08) 4px
+    );
+    pointer-events: none;
+    z-index: 5;
+  }
+
+  /* ── VIGNETTE ── */
+  #vignette {
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(ellipse at center, transparent 55%, rgba(0,0,0,0.65) 100%);
+    pointer-events: none;
+    z-index: 6;
+  }
+
+  /* ── CROSSHAIR ── */
+  #crosshair {
+    position: absolute;
+    width: 36px; height: 36px;
+    margin-left: -18px; margin-top: -18px;
+    pointer-events: none;
+    z-index: 12;
+    opacity: 0;
+    transition: opacity 0.2s;
+  }
+
+  #crosshair svg { width: 100%; height: 100%; }
+</style>
+</head>
+<body>
+
+<canvas id="c"></canvas>
+<div id="scanline"></div>
+<div id="vignette"></div>
+
+<!-- HUD -->
+<div id="hud">
+  <div class="hud-block">
+    <div class="hud-label">SCORE</div>
+    <div class="hud-value" id="hud-score">0</div>
+  </div>
+  <div class="hud-block hud-center">
+    <div class="hud-label">LEVEL</div>
+    <div class="hud-value" id="hud-level">1</div>
+  </div>
+  <div class="hud-block" style="align-items:flex-end">
+    <div class="hud-label">VIDAS</div>
+    <div class="hud-lives" id="hud-lives"></div>
+  </div>
+</div>
+
+<!-- Ammo row -->
+<div id="ammo-row">
+  <div class="base-info">
+    <div class="ammo-pips" id="pips-0"></div>
+    <div class="base-label">BASE A</div>
+  </div>
+  <div class="base-info">
+    <div class="ammo-pips" id="pips-1"></div>
+    <div class="base-label">BASE B</div>
+  </div>
+  <div class="base-info">
+    <div class="ammo-pips" id="pips-2"></div>
+    <div class="base-label">BASE C</div>
+  </div>
+</div>
+
+<!-- Level banner -->
+<div id="level-banner"></div>
+
+<!-- Crosshair -->
+<div id="crosshair">
+  <svg viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <circle cx="18" cy="18" r="10" stroke="#00ff88" stroke-width="1.2" opacity="0.8"/>
+    <line x1="18" y1="0" x2="18" y2="7" stroke="#00ff88" stroke-width="1.2" opacity="0.8"/>
+    <line x1="18" y1="29" x2="18" y2="36" stroke="#00ff88" stroke-width="1.2" opacity="0.8"/>
+    <line x1="0" y1="18" x2="7" y2="18" stroke="#00ff88" stroke-width="1.2" opacity="0.8"/>
+    <line x1="29" y1="18" x2="36" y2="18" stroke="#00ff88" stroke-width="1.2" opacity="0.8"/>
+    <circle cx="18" cy="18" r="1.5" fill="#00ff88" opacity="0.9"/>
+  </svg>
+</div>
+
+<!-- Overlay -->
+<div id="overlay">
+  <div class="overlay-title" id="ov-title">MISSILE<br>COMMAND</div>
+  <div class="overlay-sub" id="ov-sub">DEFENDA SUA CIDADE</div>
+  <div class="stat-row" id="ov-stats" style="display:none">
+    <div class="stat-box">
+      <div class="stat-num" id="ov-score">0</div>
+      <div class="stat-lbl">PONTUAÇÃO</div>
+    </div>
+    <div class="stat-box">
+      <div class="stat-num" id="ov-level">1</div>
+      <div class="stat-lbl">NÍVEL</div>
+    </div>
+  </div>
+  <button class="btn" id="ov-btn" onclick="startGame()">[ INICIAR ]</button>
+  <div class="tip" id="ov-tip" style="display:none"></div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════
+// CANVAS SETUP
+// ═══════════════════════════════════════════════════════
+const canvas = document.getElementById('c');
+const ctx    = canvas.getContext('2d');
+let W, H, GY; // GY = ground Y
+
+function resize() {
+  W = canvas.width  = window.innerWidth;
+  H = canvas.height = window.innerHeight;
+  GY = H - 58;
+}
+resize();
+window.addEventListener('resize', () => {
+  resize();
+  if (stars.length > 0) initStars(); // re-scatter stars on resize
+});
+
+// ═══════════════════════════════════════════════════════
+// CONSTANTS
+// ═══════════════════════════════════════════════════════
+const MAX_AMMO       = Infinity;
+const MAX_LIVES      = 5;
+const MAX_LEVEL      = 20;
+const CITY_W         = 36;
+const BASE_COLORS    = ['#44aaff', '#00ff88', '#ff88aa'];
+const MISSILE_PALETTE = ['#ff3333', '#ff6622', '#ff2266', '#ff8800', '#ffcc00'];
+
+// Atari-style: quantidade fixa de mísseis por level, velocidade fixa
+// 20 níveis — progressão suave de 8 mísseis lentos até 40 mais rápidos
+const LEVEL_CONFIG = [
+  { missiles:  8, speed: 0.50 }, // 1
+  { missiles: 10, speed: 0.54 }, // 2
+  { missiles: 12, speed: 0.58 }, // 3
+  { missiles: 14, speed: 0.62 }, // 4
+  { missiles: 16, speed: 0.66 }, // 5
+  { missiles: 18, speed: 0.70 }, // 6
+  { missiles: 20, speed: 0.74 }, // 7
+  { missiles: 22, speed: 0.78 }, // 8
+  { missiles: 24, speed: 0.82 }, // 9
+  { missiles: 26, speed: 0.86 }, // 10
+  { missiles: 28, speed: 0.90 }, // 11
+  { missiles: 29, speed: 0.93 }, // 12
+  { missiles: 30, speed: 0.96 }, // 13
+  { missiles: 31, speed: 0.99 }, // 14
+  { missiles: 32, speed: 1.02 }, // 15
+  { missiles: 34, speed: 1.05 }, // 16
+  { missiles: 36, speed: 1.08 }, // 17
+  { missiles: 38, speed: 1.11 }, // 18
+  { missiles: 39, speed: 1.14 }, // 19
+  { missiles: 40, speed: 1.18 }, // 20
+];
+
+// ═══════════════════════════════════════════════════════
+// GAME STATE
+// ═══════════════════════════════════════════════════════
+let score, level, lives, gameOver, running, paused;
+let missiles, interceptors, explosions, cities, bases, debris;
+let asteroids, guidedMissiles, satellites;
+let clusterBombs, migFighters;
+let stars = [];
+let frameCount, crosshairTimer = 0;
+let highScore = 0;
+let scoreTexts = [];
+
+// Atari-style level state
+let missilesLeft   = 0;  // quantos ainda vão cair neste level
+let spawnTimer     = 0;  // frames até o próximo spawn
+let levelEnding    = false; // aguardando tela limpa para avançar
+let levelEndTimer  = 0;
+
+// ═══════════════════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════════════════
+function initGame() {
+  score        = 0;
+  level        = 1;
+  lives        = MAX_LIVES;
+  gameOver     = false;
+  running      = true;
+  paused       = false;
+  frameCount   = 0;
+  levelEnding  = false;
+  levelEndTimer = 0;
+
+  missiles     = [];
+  interceptors = [];
+  explosions   = [];
+  debris       = [];
+  scoreTexts   = [];
+  asteroids      = [];
+  guidedMissiles = [];
+  satellites     = [];
+  clusterBombs   = [];
+  migFighters    = [];
+
+  initStars();
+  initCities();
+  initBases();
+  startLevel();
+  updateHUD();
+  hideCrosshairEl();
+}
+
+function initStars() {
+  stars = Array.from({ length: 80 }, () => ({
+    x:       Math.random() * W,
+    y:       Math.random() * GY * 0.85,
+    r:       Math.random() * 1.3 + 0.2,
+    twinkle: Math.random() * Math.PI * 2,
+    speed:   Math.random() * 0.03 + 0.01
+  }));
+}
+
+function initCities() {
+  const slots = [0.13, 0.25, 0.38, 0.62, 0.75, 0.87];
+  cities = slots.map(p => ({ x: W * p, alive: true, flashTimer: 0 }));
+}
+
+function initBases() {
+  // FIX: bases now include y = GY so fire() distance calc is correct
+  bases = [
+    { x: W * 0.1, y: GY, ammo: MAX_AMMO, color: BASE_COLORS[0], active: true },
+    { x: W * 0.5, y: GY, ammo: MAX_AMMO, color: BASE_COLORS[1], active: true },
+    { x: W * 0.9, y: GY, ammo: MAX_AMMO, color: BASE_COLORS[2], active: true }
+  ];
+}
+
+// Carrega a configuração do level atual e agenda os mísseis
+function startLevel() {
+  const cfg     = LEVEL_CONFIG[Math.min(level - 1, LEVEL_CONFIG.length - 1)];
+  missilesLeft  = cfg.missiles;
+  spawnTimer    = 80; // pausa inicial antes do primeiro míssil
+  levelEnding   = false;
+  levelEndTimer = 0;
+  // clear transient enemies on level transition
+  asteroids      = [];
+  guidedMissiles = [];
+  satellites     = [];
+  clusterBombs   = [];
+  migFighters    = [];
+}
+
+// ═══════════════════════════════════════════════════════
+// HUD
+// ═══════════════════════════════════════════════════════
+function updateHUD() {
+  document.getElementById('hud-score').textContent = score.toLocaleString();
+  document.getElementById('hud-level').textContent = level;
+
+  // Lives dots
+  const livesEl = document.getElementById('hud-lives');
+  livesEl.innerHTML = '';
+  for (let i = 0; i < MAX_LIVES; i++) {
+    const d = document.createElement('div');
+    d.className = 'life-dot' + (i < lives ? '' : ' dead');
+    livesEl.appendChild(d);
+  }
+
+  // Ammo pips omitted — infinite ammo mode
+}
+
+// ═══════════════════════════════════════════════════════
+// DRAW — STARS
+// ═══════════════════════════════════════════════════════
+function drawStars() {
+  for (let s of stars) {
+    s.twinkle += s.speed;
+    const alpha = 0.3 + 0.7 * (0.5 + 0.5 * Math.sin(s.twinkle));
+    ctx.fillStyle = `rgba(180,220,255,${alpha})`;
+    ctx.beginPath();
+    ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
+    ctx.fill();
+  }
+}
+
+// ═══════════════════════════════════════════════════════
+// DRAW — GROUND
+// ═══════════════════════════════════════════════════════
+function drawGround() {
+  const grd = ctx.createLinearGradient(0, GY, 0, H);
+  grd.addColorStop(0, '#0a2010');
+  grd.addColorStop(1, '#030a05');
+  ctx.fillStyle = grd;
+  ctx.fillRect(0, GY, W, H - GY);
+
+  ctx.save();
+  ctx.shadowColor = '#00ff88';
+  ctx.shadowBlur  = 8;
+  ctx.strokeStyle = '#00ff88';
+  ctx.lineWidth   = 1.5;
+  ctx.beginPath();
+  ctx.moveTo(0, GY);
+  ctx.lineTo(W, GY);
+  ctx.stroke();
+  ctx.restore();
+}
+
+// ═══════════════════════════════════════════════════════
+// DRAW — CITIES
+// ═══════════════════════════════════════════════════════
+const BUILDING_DATA = [
+  {w:6, h:18}, {w:5, h:12}, {w:7, h:22},
+  {w:5, h:14}, {w:6, h:16}, {w:5, h:10}
+];
+
+function drawCity(c) {
+  if (!c.alive) return;
+  if (c.flashTimer > 0) {
+    c.flashTimer--;
+    if (c.flashTimer % 4 < 2) return;
+  }
+  ctx.save();
+  ctx.shadowColor = '#ffcc44';
+  ctx.shadowBlur  = 10;
+  ctx.fillStyle   = '#ffcc44';
+
+  let ox = c.x - 18;
+  for (let b of BUILDING_DATA) {
+    ctx.fillRect(ox, GY - b.h, b.w, b.h);
+    // windows
+    ctx.fillStyle  = '#fff8cc';
+    ctx.shadowBlur = 0;
+    for (let wy = GY - b.h + 3; wy < GY - 2; wy += 5) {
+      for (let wx = ox + 1; wx < ox + b.w - 1; wx += 3) {
+        if (Math.random() > 0.35) ctx.fillRect(wx, wy, 1.5, 2);
+      }
+    }
+    ctx.fillStyle   = '#ffcc44';
+    ctx.shadowColor = '#ffcc44';
+    ctx.shadowBlur  = 10;
+    ox += b.w + 1;
+  }
+  ctx.restore();
+}
+
+// ═══════════════════════════════════════════════════════
+// DRAW — BASES
+// ═══════════════════════════════════════════════════════
+function drawBase(b) {
+  ctx.save();
+  if (!b.active) {
+    ctx.fillStyle   = '#223';
+    ctx.strokeStyle = '#334';
+    ctx.lineWidth   = 1;
+    ctx.beginPath();
+    ctx.moveTo(b.x - 14, GY);
+    ctx.lineTo(b.x,      GY - 18);
+    ctx.lineTo(b.x + 14, GY);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+    ctx.restore();
+    return;
+  }
+
+  ctx.shadowColor = b.color;
+  ctx.shadowBlur  = 16;
+  ctx.fillStyle   = b.color;
+  ctx.beginPath();
+  ctx.moveTo(b.x - 15, GY);
+  ctx.lineTo(b.x,      GY - 22);
+  ctx.lineTo(b.x + 15, GY);
+  ctx.closePath();
+  ctx.fill();
+
+  // barrel
+  ctx.strokeStyle = '#ffffff88';
+  ctx.lineWidth   = 2;
+  ctx.beginPath();
+  ctx.moveTo(b.x, GY - 14);
+  ctx.lineTo(b.x, GY - 24);
+  ctx.stroke();
+  ctx.restore();
+}
+
+// ═══════════════════════════════════════════════════════
+// MISSILES — ENEMY
+// ═══════════════════════════════════════════════════════
+function spawnMissile() {
+  const cfg   = LEVEL_CONFIG[Math.min(level - 1, LEVEL_CONFIG.length - 1)];
+  const speed = cfg.speed * (0.85 + Math.random() * 0.30); // leve variação ±15%
+  const sx    = Math.random() * W;                          // origem: X aleatório no topo
+  const tx    = Math.random() * W;                          // destino: X aleatório no chão
+  const dx    = tx - sx;
+  const dy    = GY;
+  const dist  = Math.hypot(dx, dy);
+  const color = MISSILE_PALETTE[Math.floor(Math.random() * MISSILE_PALETTE.length)];
+
+  missiles.push({
+    x: sx, y: 0,
+    vx: dx / dist * speed,
+    vy: dy / dist * speed,
+    tx, ty: GY,
+    trail: [],
+    color
+  });
+}
+
+function updateMissiles() {
+  for (let m of missiles) {
+    m.trail.push({ x: m.x, y: m.y });
+    if (m.trail.length > 55) m.trail.shift(); // cauda longa
+    m.x += m.vx;
+    m.y += m.vy;
+  }
+}
+
+// ═══════════════════════════════════════════════════════
+// ASTEROIDS — White & Red rocky chunks falling from sky
+// ═══════════════════════════════════════════════════════
+function spawnAsteroid() {
+  const isRed  = Math.random() < 0.45;
+  const size   = 10 + Math.random() * 18;
+  const speed  = 0.6 + Math.random() * 1.1 + level * 0.04;
+  const sx     = Math.random() * W;
+  // generate random rocky polygon offsets
+  const sides  = 7 + Math.floor(Math.random() * 4);
+  const pts    = [];
+  for (let i = 0; i < sides; i++) {
+    const angle = (i / sides) * Math.PI * 2;
+    const r     = size * (0.65 + Math.random() * 0.35);
+    pts.push({ x: Math.cos(angle) * r, y: Math.sin(angle) * r });
+  }
+  const color  = isRed ? '#ff4422' : '#ddddcc';
+  const glow   = isRed ? '#ff2200' : '#aaaaaa';
+  asteroids.push({
+    x: sx, y: -size,
+    vx: (Math.random() - 0.5) * 0.8,
+    vy: speed,
+    rot: Math.random() * Math.PI * 2,
+    rotSpeed: (Math.random() - 0.5) * 0.04,
+    pts, size, color, glow,
+    isRed, hp: isRed ? 2 : 1   // red asteroids need 2 hits
+  });
+}
+
+function updateAsteroids() {
+  for (let i = asteroids.length - 1; i >= 0; i--) {
+    const a = asteroids[i];
+    a.x   += a.vx;
+    a.y   += a.vy;
+    a.rot += a.rotSpeed;
+    if (a.y > GY + a.size) {
+      // hit ground
+      addExplosion(a.x, GY, 100 + a.size * 2, a.isRed ? '#ff3300' : '#888877', true);
+      addDebris(a.x, GY, a.color);
+      // damage cities/bases in radius
+      for (let c of cities) {
+        if (c.alive && Math.abs(c.x - a.x) < a.size + 28) {
+          c.alive = false;
+          addExplosion(c.x, GY - 8, 140, '#ff4400', true);
+        }
+      }
+      for (let b of bases) {
+        if (b.active && Math.abs(b.x - a.x) < a.size + 20) {
+          b.active = false;
+        }
+      }
+      asteroids.splice(i, 1);
+    }
+  }
+}
+
+function drawAsteroids() {
+  for (let a of asteroids) {
+    ctx.save();
+    ctx.translate(a.x, a.y);
+    ctx.rotate(a.rot);
+    ctx.shadowColor = a.glow;
+    ctx.shadowBlur  = a.isRed ? 18 : 8;
+    ctx.fillStyle   = a.color;
+    ctx.strokeStyle = a.isRed ? '#ff6644' : '#ffffff88';
+    ctx.lineWidth   = 1.2;
+    ctx.beginPath();
+    ctx.moveTo(a.pts[0].x, a.pts[0].y);
+    for (let i = 1; i < a.pts.length; i++) ctx.lineTo(a.pts[i].x, a.pts[i].y);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+    // inner highlight
+    ctx.globalAlpha = 0.3;
+    ctx.fillStyle   = '#ffffff';
+    ctx.beginPath();
+    ctx.arc(-a.size * 0.25, -a.size * 0.25, a.size * 0.25, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  }
+}
+
+// ═══════════════════════════════════════════════════════
+// GUIDED MISSILES — Slow homing, targets nearest city
+// ═══════════════════════════════════════════════════════
+function spawnGuidedMissile() {
+  const sx    = Math.random() * W;
+  const speed = 0.5 + level * 0.04;
+  guidedMissiles.push({
+    x: sx, y: -10,
+    vx: 0, vy: speed,
+    speed,
+    trail: [],
+    color: '#ff22ff',
+    glow:  '#cc00cc',
+    wobble: 0,
+    wobbleSpeed: 0.07 + Math.random() * 0.04
+  });
+}
+
+function updateGuidedMissiles() {
+  const aliveCities = cities.filter(c => c.alive);
+  for (let i = guidedMissiles.length - 1; i >= 0; i--) {
+    const gm = guidedMissiles[i];
+    gm.trail.push({ x: gm.x, y: gm.y });
+    if (gm.trail.length > 30) gm.trail.shift();
+    gm.wobble += gm.wobbleSpeed;
+
+    // Home toward nearest alive city (or center if none)
+    let tx = W / 2, ty = GY;
+    if (aliveCities.length > 0) {
+      let best = aliveCities[0], bestD = Infinity;
+      for (let c of aliveCities) {
+        const d = Math.hypot(c.x - gm.x, GY - gm.y);
+        if (d < bestD) { bestD = d; best = c; }
+      }
+      tx = best.x; ty = GY;
+    }
+
+    const dx   = tx - gm.x;
+    const dy   = ty - gm.y;
+    const dist = Math.hypot(dx, dy) || 1;
+    // Gradually steer toward target
+    gm.vx = gm.vx * 0.92 + (dx / dist * gm.speed) * 0.08;
+    gm.vy = gm.vy * 0.92 + (dy / dist * gm.speed) * 0.08;
+    // normalise speed
+    const spd = Math.hypot(gm.vx, gm.vy) || 1;
+    gm.vx = gm.vx / spd * gm.speed;
+    gm.vy = gm.vy / spd * gm.speed;
+
+    gm.x += gm.vx + Math.sin(gm.wobble) * 0.6;
+    gm.y += gm.vy;
+
+    if (gm.y >= GY) {
+      addExplosion(gm.x, GY, 120, '#ff00ff', true);
+      addDebris(gm.x, GY, gm.color);
+      for (let c of cities) {
+        if (c.alive && Math.abs(c.x - gm.x) < CITY_W + 10) {
+          c.alive = false;
+          addExplosion(c.x, GY - 8, 150, '#ff44ff', true);
+        }
+      }
+      guidedMissiles.splice(i, 1);
+    }
+  }
+}
+
+function drawGuidedMissiles() {
+  for (let gm of guidedMissiles) {
+    if (gm.trail.length < 2) continue;
+    ctx.save();
+    // trail
+    for (let i = 1; i < gm.trail.length; i++) {
+      const t = i / gm.trail.length;
+      ctx.globalAlpha = t * 0.7;
+      ctx.strokeStyle = gm.color;
+      ctx.lineWidth   = t * 3;
+      ctx.shadowColor = gm.glow;
+      ctx.shadowBlur  = 12;
+      ctx.beginPath();
+      ctx.moveTo(gm.trail[i-1].x, gm.trail[i-1].y);
+      ctx.lineTo(gm.trail[i].x,   gm.trail[i].y);
+      ctx.stroke();
+    }
+    // head — diamond shape
+    ctx.globalAlpha = 1;
+    ctx.fillStyle   = gm.color;
+    ctx.shadowColor = gm.glow;
+    ctx.shadowBlur  = 20;
+    ctx.beginPath();
+    ctx.moveTo(gm.x,     gm.y - 7);
+    ctx.lineTo(gm.x + 4, gm.y);
+    ctx.lineTo(gm.x,     gm.y + 7);
+    ctx.lineTo(gm.x - 4, gm.y);
+    ctx.closePath();
+    ctx.fill();
+    // white core
+    ctx.fillStyle  = '#fff';
+    ctx.shadowBlur = 4;
+    ctx.beginPath();
+    ctx.arc(gm.x, gm.y, 1.5, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  }
+}
+
+// ═══════════════════════════════════════════════════════
+// SATELLITES — Cross screen horizontally, drop bombs
+// ═══════════════════════════════════════════════════════
+function spawnSatellite() {
+  const fromLeft = Math.random() < 0.5;
+  const y        = 40 + Math.random() * (GY * 0.4);
+  const speed    = 1.0 + level * 0.07;
+  satellites.push({
+    x:        fromLeft ? -60 : W + 60,
+    y,
+    vx:       fromLeft ? speed : -speed,
+    fromLeft,
+    bombTimer: 80 + Math.floor(Math.random() * 60),
+    color:     '#00eeff',
+    glow:      '#0088aa',
+    rot:       0
+  });
+}
+
+function updateSatellites() {
+  for (let i = satellites.length - 1; i >= 0; i--) {
+    const sat = satellites[i];
+    sat.x   += sat.vx;
+    sat.rot += 0.04;
+    sat.bombTimer--;
+    if (sat.bombTimer <= 0) {
+      // Drop a bomb (standard missile from satellite position)
+      const tx    = Math.random() * W;
+      const dx    = tx - sat.x;
+      const dy    = GY - sat.y;
+      const dist  = Math.hypot(dx, dy) || 1;
+      const bspd  = 0.7 + level * 0.03;
+      const color = MISSILE_PALETTE[Math.floor(Math.random() * MISSILE_PALETTE.length)];
+      missiles.push({
+        x: sat.x, y: sat.y,
+        vx: dx / dist * bspd,
+        vy: dy / dist * bspd,
+        tx, ty: GY,
+        trail: [],
+        color
+      });
+      sat.bombTimer = 80 + Math.floor(Math.random() * 60);
+    }
+    // Remove when off screen
+    if ((sat.fromLeft && sat.x > W + 80) || (!sat.fromLeft && sat.x < -80)) {
+      satellites.splice(i, 1);
+    }
+  }
+}
+
+function drawSatellites() {
+  for (let sat of satellites) {
+    ctx.save();
+    ctx.translate(sat.x, sat.y);
+    ctx.shadowColor = sat.glow;
+    ctx.shadowBlur  = 16;
+    ctx.strokeStyle = sat.color;
+    ctx.lineWidth   = 2;
+    ctx.fillStyle   = sat.color;
+
+    // Body — rectangle
+    ctx.fillRect(-10, -5, 20, 10);
+
+    // Solar panels (rotate slowly)
+    ctx.save();
+    ctx.rotate(sat.rot * 0.3);
+    ctx.strokeStyle = '#55ddff';
+    ctx.lineWidth   = 1.5;
+    // left panel
+    ctx.beginPath();
+    ctx.moveTo(-10, 0);
+    ctx.lineTo(-32, 0);
+    ctx.stroke();
+    ctx.strokeRect(-32, -6, 12, 12);
+    ctx.strokeRect(-22, -6, 10, 12);
+    // right panel
+    ctx.beginPath();
+    ctx.moveTo(10, 0);
+    ctx.lineTo(32, 0);
+    ctx.stroke();
+    ctx.strokeRect(20, -6, 12, 12);
+    ctx.strokeRect(10, -6, 10, 12);
+    ctx.restore();
+
+    // Antenna
+    ctx.beginPath();
+    ctx.moveTo(0, -5);
+    ctx.lineTo(0, -14);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.arc(0, -14, 2, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.restore();
+  }
+}
+
+// ═══════════════════════════════════════════════════════
+// CLUSTER BOMBS — Fall slowly, split into 3 fragments on destruction
+// Appear from level 9+
+// ═══════════════════════════════════════════════════════
+function spawnClusterBomb() {
+  const sx    = 60 + Math.random() * (W - 120);
+  const speed = 0.35 + Math.random() * 0.4 + level * 0.02;
+  clusterBombs.push({
+    x: sx, y: -18,
+    vx: (Math.random() - 0.5) * 0.5,
+    vy: speed,
+    rot: Math.random() * Math.PI * 2,
+    rotSpeed: (Math.random() - 0.5) * 0.03,
+    hp: 1,
+    size: 14,
+    pulse: 0,
+    color: '#ff8800',
+    glow:  '#ff5500'
+  });
+}
+
+function spawnClusterFragment(x, y) {
+  for (let i = 0; i < 3; i++) {
+    const angle = (i / 3) * Math.PI * 2 + Math.random() * 0.5;
+    const spd   = 1.0 + Math.random() * 1.2 + level * 0.03;
+    const tx    = x + Math.cos(angle) * (W * 0.3);
+    const ty    = GY;
+    const dist  = Math.hypot(tx - x, ty - y) || 1;
+    missiles.push({
+      x, y,
+      vx: (tx - x) / dist * spd,
+      vy: (ty - y) / dist * spd,
+      tx, ty: GY,
+      trail: [],
+      color: '#ffaa00'
+    });
+  }
+}
+
+function updateClusterBombs() {
+  for (let i = clusterBombs.length - 1; i >= 0; i--) {
+    const cb = clusterBombs[i];
+    cb.x   += cb.vx;
+    cb.y   += cb.vy;
+    cb.rot += cb.rotSpeed;
+    cb.pulse += 0.12;
+    if (cb.y > GY + cb.size) {
+      // hit ground — big explosion + fragments
+      addExplosion(cb.x, GY, 150, '#ff8800', true);
+      addDebris(cb.x, GY, cb.color);
+      spawnClusterFragment(cb.x, GY);
+      for (let c of cities) {
+        if (c.alive && Math.abs(c.x - cb.x) < cb.size + 28) {
+          c.alive = false;
+          addExplosion(c.x, GY - 8, 140, '#ff6600', true);
+        }
+      }
+      clusterBombs.splice(i, 1);
+    }
+  }
+}
+
+function drawClusterBombs() {
+  for (let cb of clusterBombs) {
+    ctx.save();
+    ctx.translate(cb.x, cb.y);
+    ctx.rotate(cb.rot);
+    const pulseGlow = 12 + Math.sin(cb.pulse) * 6;
+    ctx.shadowColor = cb.glow;
+    ctx.shadowBlur  = pulseGlow;
+    // Outer casing (hexagon-ish)
+    ctx.beginPath();
+    for (let k = 0; k < 6; k++) {
+      const a = (k / 6) * Math.PI * 2;
+      const r = cb.size * (k % 2 === 0 ? 1 : 0.82);
+      if (k === 0) ctx.moveTo(Math.cos(a) * r, Math.sin(a) * r);
+      else ctx.lineTo(Math.cos(a) * r, Math.sin(a) * r);
+    }
+    ctx.closePath();
+    ctx.fillStyle   = cb.color;
+    ctx.fill();
+    ctx.strokeStyle = '#ffcc44';
+    ctx.lineWidth   = 1.5;
+    ctx.stroke();
+    // Warning stripes
+    ctx.globalAlpha = 0.6;
+    ctx.fillStyle   = '#ff2200';
+    for (let k = 0; k < 3; k++) {
+      const a = (k / 3) * Math.PI * 2 + cb.pulse * 0.3;
+      ctx.beginPath();
+      ctx.arc(Math.cos(a) * cb.size * 0.45, Math.sin(a) * cb.size * 0.45, 2.5, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    // Core blink
+    ctx.globalAlpha = 0.7 + 0.3 * Math.sin(cb.pulse * 2);
+    ctx.fillStyle   = '#ffffff';
+    ctx.shadowBlur  = 8;
+    ctx.beginPath();
+    ctx.arc(0, 0, 3, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  }
+}
+
+// ═══════════════════════════════════════════════════════
+// MiG FIGHTERS — Fast jets, fly across screen, fire 3-shot bursts
+// Appear from level 11+
+// ═══════════════════════════════════════════════════════
+function spawnMigFighter() {
+  const fromLeft = Math.random() < 0.5;
+  const y        = GY * 0.1 + Math.random() * GY * 0.45;
+  const speed    = 1.8 + level * 0.1;
+  migFighters.push({
+    x:         fromLeft ? -50 : W + 50,
+    y,
+    vx:        fromLeft ? speed : -speed,
+    fromLeft,
+    burstTimer: 60 + Math.floor(Math.random() * 40),
+    burstCount: 0,
+    burstMax:   3,
+    burstDelay: 0,
+    color:      '#ff4466',
+    glow:       '#cc0033',
+    trail:      []
+  });
+}
+
+function updateMigFighters() {
+  for (let i = migFighters.length - 1; i >= 0; i--) {
+    const mig = migFighters[i];
+    mig.trail.push({ x: mig.x, y: mig.y });
+    if (mig.trail.length > 20) mig.trail.shift();
+
+    mig.x += mig.vx;
+
+    // Burst logic
+    if (mig.burstDelay > 0) {
+      mig.burstDelay--;
+    } else {
+      mig.burstTimer--;
+      if (mig.burstTimer <= 0 && mig.burstCount < mig.burstMax) {
+        // Fire one shot in the burst — spread 3 angles downward
+        const angle = (Math.PI * 0.5) + (mig.burstCount - 1) * 0.3;
+        const bspd  = 0.9 + level * 0.03;
+        const color = MISSILE_PALETTE[Math.floor(Math.random() * MISSILE_PALETTE.length)];
+        missiles.push({
+          x: mig.x, y: mig.y,
+          vx: Math.cos(angle) * bspd * (mig.fromLeft ? 0.3 : -0.3),
+          vy: Math.abs(Math.sin(angle)) * bspd,
+          tx: mig.x + Math.cos(angle) * 300,
+          ty: GY,
+          trail: [],
+          color
+        });
+        mig.burstCount++;
+        mig.burstDelay = 8;
+        if (mig.burstCount >= mig.burstMax) {
+          mig.burstTimer  = 90 + Math.floor(Math.random() * 50);
+          mig.burstCount  = 0;
+        }
+      }
+    }
+
+    if ((mig.fromLeft && mig.x > W + 70) || (!mig.fromLeft && mig.x < -70)) {
+      migFighters.splice(i, 1);
+    }
+  }
+}
+
+function drawMigFighters() {
+  for (let mig of migFighters) {
+    // Trail
+    if (mig.trail.length > 1) {
+      ctx.save();
+      for (let k = 1; k < mig.trail.length; k++) {
+        const t = k / mig.trail.length;
+        ctx.globalAlpha = t * 0.5;
+        ctx.strokeStyle = mig.color;
+        ctx.lineWidth   = t * 2.5;
+        ctx.shadowColor = mig.glow;
+        ctx.shadowBlur  = 10;
+        ctx.beginPath();
+        ctx.moveTo(mig.trail[k-1].x, mig.trail[k-1].y);
+        ctx.lineTo(mig.trail[k].x,   mig.trail[k].y);
+        ctx.stroke();
+      }
+      ctx.restore();
+    }
+
+    ctx.save();
+    ctx.translate(mig.x, mig.y);
+    if (!mig.fromLeft) ctx.scale(-1, 1);
+
+    ctx.shadowColor = mig.glow;
+    ctx.shadowBlur  = 18;
+    ctx.fillStyle   = mig.color;
+
+    // Fuselage
+    ctx.beginPath();
+    ctx.moveTo(22,  0);
+    ctx.lineTo(-14,  5);
+    ctx.lineTo(-14, -5);
+    ctx.closePath();
+    ctx.fill();
+
+    // Cockpit
+    ctx.fillStyle = '#ffccdd';
+    ctx.shadowBlur = 6;
+    ctx.beginPath();
+    ctx.ellipse(8, 0, 6, 3.5, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Wings
+    ctx.fillStyle = mig.color;
+    ctx.shadowBlur = 10;
+    ctx.beginPath();
+    ctx.moveTo(4,  0);
+    ctx.lineTo(-10,  18);
+    ctx.lineTo(-14,  5);
+    ctx.closePath();
+    ctx.fill();
+    ctx.beginPath();
+    ctx.moveTo(4,  0);
+    ctx.lineTo(-10, -18);
+    ctx.lineTo(-14, -5);
+    ctx.closePath();
+    ctx.fill();
+
+    // Tail fin
+    ctx.beginPath();
+    ctx.moveTo(-10, 0);
+    ctx.lineTo(-18, -10);
+    ctx.lineTo(-14, -4);
+    ctx.closePath();
+    ctx.fill();
+
+    // Engine glow
+    ctx.fillStyle  = '#ffaa00';
+    ctx.shadowColor = '#ff8800';
+    ctx.shadowBlur  = 14;
+    ctx.beginPath();
+    ctx.arc(-14, 0, 4, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.restore();
+  }
+}
+
+function drawMissiles() {
+  for (let m of missiles) {
+    if (m.trail.length < 2) continue;
+    ctx.save();
+
+    const len = m.trail.length;
+
+    // ── Camada 1: glow externo largo ──
+    ctx.lineCap  = 'round';
+    ctx.lineJoin = 'round';
+    for (let i = 1; i < len; i++) {
+      const t     = i / len;
+      const alpha = t * t * 0.35;
+      const width = 1 + t * 9;
+      ctx.globalAlpha = alpha;
+      ctx.strokeStyle = m.color;
+      ctx.lineWidth   = width;
+      ctx.shadowColor = m.color;
+      ctx.shadowBlur  = 18;
+      ctx.beginPath();
+      ctx.moveTo(m.trail[i - 1].x, m.trail[i - 1].y);
+      ctx.lineTo(m.trail[i].x,     m.trail[i].y);
+      ctx.stroke();
+    }
+
+    // ── Camada 2: núcleo branco fino ──
+    ctx.shadowBlur = 8;
+    for (let i = 1; i < len; i++) {
+      const t     = i / len;
+      const alpha = t * 0.9;
+      const width = 0.5 + t * 2.5;
+      ctx.globalAlpha = alpha;
+      ctx.strokeStyle = '#ffffff';
+      ctx.lineWidth   = width;
+      ctx.beginPath();
+      ctx.moveTo(m.trail[i - 1].x, m.trail[i - 1].y);
+      ctx.lineTo(m.trail[i].x,     m.trail[i].y);
+      ctx.stroke();
+    }
+
+    // ── Cabeça: ponto com halo ──
+    ctx.globalAlpha = 1;
+    ctx.shadowColor = m.color;
+    ctx.shadowBlur  = 20;
+    ctx.fillStyle   = m.color;
+    ctx.beginPath();
+    ctx.arc(m.x, m.y, 4.5, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.shadowBlur = 6;
+    ctx.fillStyle  = '#ffffff';
+    ctx.beginPath();
+    ctx.arc(m.x, m.y, 2, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.restore();
+  }
+}
+
+// ═══════════════════════════════════════════════════════
+// INTERCEPTORS — PLAYER
+// ═══════════════════════════════════════════════════════
+
+// FIX: find the nearest base by distance; base.y is now properly set to GY
+function findNearestBase(tx, ty) {
+  let best = null, bestDist = Infinity;
+  for (let b of bases) {
+    if (!b.active) continue;
+    const d = Math.hypot(b.x - tx, b.y - ty);
+    if (d < bestDist) { bestDist = d; best = b; }
+  }
+  return best;
+}
+
+function fire(tx, ty) {
+  const base = findNearestBase(tx, ty);
+  if (!base) return;
+
+  base.ammo--;
+  const dx   = tx - base.x;
+  const dy   = ty - base.y;
+  const dist = Math.hypot(dx, dy);
+  const speed = 7 + level * 0.3;
+
+  interceptors.push({
+    x: base.x, y: base.y,
+    vx: dx / dist * speed,
+    vy: dy / dist * speed,
+    tx, ty,
+    trail: [],
+    bColor: base.color
+  });
+
+  updateHUD();
+}
+
+function updateInterceptors() {
+  for (let i = interceptors.length - 1; i >= 0; i--) {
+    const ic = interceptors[i];
+    ic.trail.push({ x: ic.x, y: ic.y });
+    if (ic.trail.length > 14) ic.trail.shift();
+    ic.x += ic.vx;
+    ic.y += ic.vy;
+
+    if (Math.hypot(ic.x - ic.tx, ic.y - ic.ty) < 10) {
+      addExplosion(ic.x, ic.y, 90 + level * 3, '#88ccff', false);
+      interceptors.splice(i, 1);
+    }
+  }
+}
+
+function drawInterceptors() {
+  for (let ic of interceptors) {
+    if (ic.trail.length < 2) continue;
+    ctx.save();
+    ctx.shadowColor = ic.bColor;
+    ctx.shadowBlur  = 8;
+    ctx.lineWidth   = 1.5;
+    for (let i = 1; i < ic.trail.length; i++) {
+      const alpha = i / ic.trail.length;
+      ctx.strokeStyle = `rgba(200,230,255,${alpha * 0.9})`;
+      ctx.beginPath();
+      ctx.moveTo(ic.trail[i - 1].x, ic.trail[i - 1].y);
+      ctx.lineTo(ic.trail[i].x,     ic.trail[i].y);
+      ctx.stroke();
+    }
+    ctx.fillStyle  = '#fff';
+    ctx.shadowBlur = 12;
+    ctx.beginPath();
+    ctx.arc(ic.x, ic.y, 2.5, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  }
+}
+
+// ═══════════════════════════════════════════════════════
+// EXPLOSIONS
+// ═══════════════════════════════════════════════════════
+function addExplosion(x, y, maxR, color, ground) {
+  explosions.push({ x, y, r: 0, maxR, color, alpha: 1, growing: true, ground: !!ground });
+}
+
+function updateExplosions() {
+  for (let i = explosions.length - 1; i >= 0; i--) {
+    const ex = explosions[i];
+    if (ex.growing) {
+      ex.r += ex.maxR < 80 ? 3.5 : 3.0;
+      if (ex.r >= ex.maxR) ex.growing = false;
+    } else {
+      ex.r     -= 1.2;
+      ex.alpha -= 0.028;
+    }
+    if (ex.alpha <= 0 || ex.r <= 0) explosions.splice(i, 1);
+  }
+}
+
+function drawExplosions() {
+  for (let ex of explosions) {
+    ctx.save();
+    const grd = ctx.createRadialGradient(ex.x, ex.y, 0, ex.x, ex.y, ex.r);
+    grd.addColorStop(0,    ex.color + 'ff');
+    grd.addColorStop(0.35, ex.color + 'cc');
+    grd.addColorStop(0.7,  ex.color + '55');
+    grd.addColorStop(1,    ex.color + '00');
+    ctx.globalAlpha = ex.alpha;
+    ctx.fillStyle   = grd;
+    ctx.beginPath();
+    ctx.arc(ex.x, ex.y, ex.r, 0, Math.PI * 2);
+    ctx.fill();
+    if (ex.growing) {
+      ctx.strokeStyle  = ex.color + 'cc';
+      ctx.lineWidth    = 1.5;
+      ctx.shadowColor  = ex.color;
+      ctx.shadowBlur   = 14;
+      ctx.globalAlpha  = ex.alpha * 0.7;
+      ctx.beginPath();
+      ctx.arc(ex.x, ex.y, ex.r, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+    ctx.restore();
+  }
+}
+
+// ═══════════════════════════════════════════════════════
+// DEBRIS
+// ═══════════════════════════════════════════════════════
+function addDebris(x, y, color) {
+  for (let i = 0; i < 6; i++) {
+    const angle = Math.random() * Math.PI * 2;
+    const speed = 1 + Math.random() * 3;
+    debris.push({
+      x, y,
+      vx: Math.cos(angle) * speed,
+      vy: Math.sin(angle) * speed - 1,
+      life: 1,
+      color,
+      size: Math.random() * 2 + 1
+    });
+  }
+}
+
+function updateDebris() {
+  for (let i = debris.length - 1; i >= 0; i--) {
+    const d = debris[i];
+    d.x   += d.vx;
+    d.y   += d.vy;
+    d.vy  += 0.08;
+    d.life -= 0.025;
+    if (d.life <= 0) debris.splice(i, 1);
+  }
+}
+
+function drawDebris() {
+  for (let d of debris) {
+    ctx.save();
+    ctx.globalAlpha = d.life;
+    ctx.fillStyle   = d.color;
+    ctx.beginPath();
+    ctx.arc(d.x, d.y, d.size, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  }
+}
+
+// ═══════════════════════════════════════════════════════
+// COLLISION DETECTION
+// ═══════════════════════════════════════════════════════
+function checkCollisions() {
+  // Growing explosions vs enemy missiles
+  for (const ex of explosions) {
+    if (!ex.growing) continue;
+    for (let j = missiles.length - 1; j >= 0; j--) {
+      const m = missiles[j];
+      if (Math.hypot(m.x - ex.x, m.y - ex.y) < ex.r + 4) {
+        addExplosion(m.x, m.y, 42, m.color, false);
+        addDebris(m.x, m.y, m.color);
+        missiles.splice(j, 1);
+        const pts = 25 * level;
+        score += pts;
+        spawnScoreText(m.x, m.y, pts);
+        updateHUD();
+      }
+    }
+
+    // vs asteroids
+    for (let j = asteroids.length - 1; j >= 0; j--) {
+      const a = asteroids[j];
+      if (Math.hypot(a.x - ex.x, a.y - ex.y) < ex.r + a.size) {
+        a.hp--;
+        if (a.hp <= 0) {
+          addExplosion(a.x, a.y, 60 + a.size * 2, a.isRed ? '#ff4422' : '#aaaaaa', false);
+          addDebris(a.x, a.y, a.color);
+          // red asteroids split into 2 small white ones
+          if (a.isRed && a.size > 12) {
+            for (let s = 0; s < 2; s++) {
+              const sz  = a.size * 0.5;
+              const ang = Math.random() * Math.PI * 2;
+              const pts2 = [];
+              for (let k = 0; k < 7; k++) {
+                const ag = (k / 7) * Math.PI * 2;
+                pts2.push({ x: Math.cos(ag) * sz * (0.65 + Math.random() * 0.35),
+                            y: Math.sin(ag) * sz * (0.65 + Math.random() * 0.35) });
+              }
+              asteroids.push({
+                x: a.x + (s === 0 ? -sz : sz), y: a.y,
+                vx: Math.cos(ang) * 1.2,
+                vy: Math.abs(Math.sin(ang)) * 1.5 + 0.5,
+                rot: Math.random() * Math.PI * 2,
+                rotSpeed: (Math.random() - 0.5) * 0.06,
+                pts: pts2, size: sz,
+                color: '#ddddcc', glow: '#aaaaaa',
+                isRed: false, hp: 1
+              });
+            }
+          }
+          asteroids.splice(j, 1);
+          const pts = (a.isRed ? 75 : 40) * level;
+          score += pts;
+          spawnScoreText(a.x, a.y, pts);
+          updateHUD();
+        } else {
+          // flash on hit
+          addDebris(a.x, a.y, '#ffff88');
+        }
+      }
+    }
+
+    // vs guided missiles
+    for (let j = guidedMissiles.length - 1; j >= 0; j--) {
+      const gm = guidedMissiles[j];
+      if (Math.hypot(gm.x - ex.x, gm.y - ex.y) < ex.r + 6) {
+        addExplosion(gm.x, gm.y, 50, '#ff44ff', false);
+        addDebris(gm.x, gm.y, gm.color);
+        guidedMissiles.splice(j, 1);
+        const pts = 60 * level;
+        score += pts;
+        spawnScoreText(gm.x, gm.y, pts);
+        updateHUD();
+      }
+    }
+
+    // vs satellites
+    for (let j = satellites.length - 1; j >= 0; j--) {
+      const sat = satellites[j];
+      if (Math.hypot(sat.x - ex.x, sat.y - ex.y) < ex.r + 35) {
+        addExplosion(sat.x, sat.y, 80, '#00eeff', false);
+        addDebris(sat.x, sat.y, sat.color);
+        satellites.splice(j, 1);
+        const pts = 100 * level;
+        score += pts;
+        spawnScoreText(sat.x, sat.y, pts);
+        updateHUD();
+      }
+    }
+
+    // vs cluster bombs
+    for (let j = clusterBombs.length - 1; j >= 0; j--) {
+      const cb = clusterBombs[j];
+      if (Math.hypot(cb.x - ex.x, cb.y - ex.y) < ex.r + cb.size) {
+        // Explode and scatter fragments
+        addExplosion(cb.x, cb.y, 70, '#ff8800', false);
+        addDebris(cb.x, cb.y, cb.color);
+        spawnClusterFragment(cb.x, cb.y);
+        clusterBombs.splice(j, 1);
+        const pts = 80 * level;
+        score += pts;
+        spawnScoreText(cb.x, cb.y, pts);
+        updateHUD();
+      }
+    }
+
+    // vs MiG fighters
+    for (let j = migFighters.length - 1; j >= 0; j--) {
+      const mig = migFighters[j];
+      if (Math.hypot(mig.x - ex.x, mig.y - ex.y) < ex.r + 22) {
+        addExplosion(mig.x, mig.y, 90, '#ff4466', false);
+        addDebris(mig.x, mig.y, mig.color);
+        migFighters.splice(j, 1);
+        const pts = 120 * level;
+        score += pts;
+        spawnScoreText(mig.x, mig.y, pts);
+        updateHUD();
+      }
+    }
+  }
+
+  // Missiles reach ground
+  for (let i = missiles.length - 1; i >= 0; i--) {
+    const m = missiles[i];
+    if (m.y >= GY - 2) {
+      addExplosion(m.x, GY, 130, '#ff6600', true);
+      addDebris(m.x, GY, m.color);
+      missiles.splice(i, 1);
+      // Check city hit
+      for (let c of cities) {
+        if (c.alive && Math.abs(c.x - m.x) < CITY_W) {
+          c.alive = false;
+          addExplosion(c.x, GY - 8, 160, '#ff4400', true);
+        }
+      }
+      // Check base hit
+      for (let b of bases) {
+        if (b.active && Math.abs(b.x - m.x) < 18) {
+          b.active = false;
+          addExplosion(b.x, GY - 10, 85, '#4488ff', true);
+        }
+      }
+    }
+  }
+
+  // Ground explosions vs cities and bases
+  for (const ex of explosions) {
+    if (!ex.ground || !ex.growing) continue;
+    for (let c of cities) {
+      if (c.alive && Math.abs(c.x - ex.x) < ex.r + 10) {
+        c.alive = false;
+      }
+    }
+    for (let b of bases) {
+      if (b.active && Math.abs(b.x - ex.x) < ex.r + 10) {
+        b.active = false;
+        addExplosion(b.x, GY - 10, 45, '#4488ff', true);
+      }
+    }
+  }
+}
+
+// ═══════════════════════════════════════════════════════
+// FLOATING SCORE TEXT
+// ═══════════════════════════════════════════════════════
+function spawnScoreText(x, y, val) {
+  scoreTexts.push({ x, y, val, alpha: 1, vy: -1.2 });
+}
+
+function updateDrawScoreTexts() {
+  ctx.save();
+  ctx.font      = "bold 12px 'Orbitron', monospace";
+  ctx.textAlign = 'center';
+  for (let i = scoreTexts.length - 1; i >= 0; i--) {
+    const s = scoreTexts[i];
+    s.y     += s.vy;
+    s.alpha -= 0.022;
+    if (s.alpha <= 0) { scoreTexts.splice(i, 1); continue; }
+    ctx.globalAlpha  = s.alpha;
+    ctx.fillStyle    = '#ffcc00';
+    ctx.shadowColor  = '#ffcc00';
+    ctx.shadowBlur   = 8;
+    ctx.fillText('+' + s.val, s.x, s.y);
+  }
+  ctx.globalAlpha = 1;
+  ctx.restore();
+}
+
+// ═══════════════════════════════════════════════════════
+// WAVE / LEVEL LOGIC — estilo Atari
+// Uma quantidade fixa de mísseis cai. Quando todos saíram e a
+// tela limpa, o level termina. Sem waves, sem inteligência.
+// ═══════════════════════════════════════════════════════
+function tickLevel() {
+  // Spawn asteroids: start at level 3, one every ~300 frames, more often later
+  if (level >= 3 && frameCount % Math.max(120, 320 - level * 10) === 0) {
+    if (Math.random() < 0.55) spawnAsteroid();
+  }
+
+  // Spawn guided missiles: start at level 5, occasional
+  if (level >= 5 && frameCount % Math.max(200, 450 - level * 12) === 0) {
+    if (Math.random() < 0.4) spawnGuidedMissile();
+  }
+
+  // Spawn satellites: start at level 7, rare
+  if (level >= 7 && frameCount % Math.max(350, 600 - level * 15) === 0) {
+    if (Math.random() < 0.35 && satellites.length < 2) spawnSatellite();
+  }
+
+  // Spawn cluster bombs: start at level 9, moderate frequency
+  if (level >= 9 && frameCount % Math.max(180, 400 - level * 12) === 0) {
+    if (Math.random() < 0.45 && clusterBombs.length < 3) spawnClusterBomb();
+  }
+
+  // Spawn MiG fighters: start at level 11, occasional fast passes
+  if (level >= 11 && frameCount % Math.max(280, 550 - level * 14) === 0) {
+    if (Math.random() < 0.38 && migFighters.length < 2) spawnMigFighter();
+  }
+
+  // Ainda há mísseis para spawnar?
+  if (missilesLeft > 0) {
+    spawnTimer--;
+    if (spawnTimer <= 0) {
+      spawnMissile();
+      missilesLeft--;
+      // intervalo entre mísseis: ~100f no nível 1, ~40f no nível 20
+      const baseInterval = Math.max(40, 100 - (level - 1) * 3);
+      spawnTimer = baseInterval + Math.floor(Math.random() * 20 - 10);
+    }
+    return;
+  }
+
+  // Todos os mísseis foram lançados — aguarda tela limpar
+  if (!levelEnding) {
+    if (missiles.length === 0 && interceptors.length === 0 &&
+        asteroids.length === 0 && guidedMissiles.length === 0 &&
+        clusterBombs.length === 0 && migFighters.length === 0) {
+      levelEnding   = true;
+      levelEndTimer = 90; // ~1.5s de pausa antes de avançar
+    }
+    return;
+  }
+
+  levelEndTimer--;
+  if (levelEndTimer <= 0) advanceLevel();
+}
+
+function advanceLevel() {
+  // Bônus por cidades sobreviventes
+  const alive = cities.filter(c => c.alive).length;
+  score += alive * 100 * level;
+
+  if (level >= MAX_LEVEL) {
+    updateHUD();
+    if (score > highScore) highScore = score;
+    gameOver = true;
+    running  = false;
+    setTimeout(showVictory, 800);
+    return;
+  }
+
+  level++;
+
+  // Recuperação de bases: a cada 5 níveis uma base destruída é restaurada
+  if (level % 5 === 0) {
+    const destroyed = bases.filter(b => !b.active);
+    if (destroyed.length > 0) {
+      // Restaura a primeira base destruída
+      const b  = destroyed[0];
+      b.active = true;
+      b.y      = GY;
+      showLevelBanner('BASE RECUPERADA!\nNÍVEL ' + level + ' / ' + MAX_LEVEL);
+    } else {
+      showLevelBanner('NÍVEL ' + level + ' / ' + MAX_LEVEL);
+    }
+  } else {
+    showLevelBanner('NÍVEL ' + level + ' / ' + MAX_LEVEL);
+  }
+
+  // Garante y atualizado em todas as bases ativas (caso tenha havido resize)
+  for (let b of bases) if (b.active) b.y = GY;
+
+  updateHUD();
+  startLevel();
+}
+
+function showVictory() {
+  document.getElementById('ov-title').textContent    = 'VITÓRIA!';
+  document.getElementById('ov-title').className      = 'overlay-title';
+  document.getElementById('ov-sub').textContent      = 'TODOS OS 20 NÍVEIS CONCLUÍDOS';
+  document.getElementById('ov-score').textContent    = score.toLocaleString();
+  document.getElementById('ov-level').textContent    = MAX_LEVEL;
+  document.getElementById('ov-stats').style.display  = 'flex';
+  document.getElementById('ov-btn').textContent      = '[ JOGAR NOVAMENTE ]';
+  document.getElementById('ov-tip').textContent      = 'RECORDE: ' + highScore.toLocaleString();
+  document.getElementById('overlay').classList.remove('hidden');
+}
+
+function showLevelBanner(text) {
+  const el = document.getElementById('level-banner');
+  el.textContent  = text;
+  el.style.opacity = '1';
+  setTimeout(() => { el.style.opacity = '0'; }, 1800);
+}
+
+// ═══════════════════════════════════════════════════════
+// GAME OVER
+// ═══════════════════════════════════════════════════════
+function checkGameOver() {
+  if (cities.filter(c => c.alive).length === 0) {
+    if (score > highScore) highScore = score;
+    gameOver = true;
+    running  = false;
+    setTimeout(showGameOver, 800);
+  }
+}
+
+function showGameOver() {
+  document.getElementById('ov-title').textContent = 'GAME\nOVER';
+  document.getElementById('ov-title').className   = 'overlay-title red';
+  document.getElementById('ov-sub').textContent   = 'SUAS CIDADES FORAM DESTRUÍDAS';
+  document.getElementById('ov-score').textContent = score.toLocaleString();
+  document.getElementById('ov-level').textContent = level;
+  document.getElementById('ov-stats').style.display = 'flex';
+  document.getElementById('ov-btn').textContent   = '[ JOGAR NOVAMENTE ]';
+  document.getElementById('ov-tip').textContent   = 'RECORDE: ' + highScore.toLocaleString();
+  document.getElementById('overlay').classList.remove('hidden');
+}
+
+// ═══════════════════════════════════════════════════════
+// CROSSHAIR ELEMENT
+// ═══════════════════════════════════════════════════════
+const chEl = document.getElementById('crosshair');
+
+function placeCrosshair(x, y) {
+  chEl.style.left    = x + 'px';
+  chEl.style.top     = y + 'px';
+  chEl.style.opacity = '1';
+  crosshairTimer = 18;
+}
+
+function hideCrosshairEl() {
+  chEl.style.opacity = '0';
+}
+
+// ═══════════════════════════════════════════════════════
+// INPUT
+// ═══════════════════════════════════════════════════════
+function handleFire(cx, cy) {
+  if (!running || gameOver) return;
+  placeCrosshair(cx, cy);
+  fire(cx, cy);
+}
+
+canvas.addEventListener('touchstart', e => {
+  e.preventDefault();
+  const t    = e.changedTouches[0];
+  const rect = canvas.getBoundingClientRect();
+  handleFire(t.clientX - rect.left, t.clientY - rect.top);
+}, { passive: false });
+
+canvas.addEventListener('click', e => {
+  const rect = canvas.getBoundingClientRect();
+  handleFire(e.clientX - rect.left, e.clientY - rect.top);
+});
+
+// ═══════════════════════════════════════════════════════
+// MAIN LOOP
+// ═══════════════════════════════════════════════════════
+function loop() {
+  requestAnimationFrame(loop);
+
+  // Background sky
+  const sky = ctx.createLinearGradient(0, 0, 0, GY);
+  sky.addColorStop(0, '#000a05');
+  sky.addColorStop(1, '#001408');
+  ctx.fillStyle = sky;
+  ctx.fillRect(0, 0, W, GY);
+
+  // Always draw passive elements (visible on title screen too)
+  if (stars.length > 0) drawStars();
+  drawGround();
+
+  if (running || gameOver) {
+    for (let c of cities) drawCity(c);
+    for (let b of bases)  drawBase(b);
+    drawMissiles();
+    drawAsteroids();
+    drawGuidedMissiles();
+    drawSatellites();
+    drawClusterBombs();
+    drawMigFighters();
+    drawInterceptors();
+    drawExplosions();
+    drawDebris();
+    updateDrawScoreTexts();
+  }
+
+  if (!running) return;
+
+  frameCount++;
+
+  updateMissiles();
+  updateAsteroids();
+  updateGuidedMissiles();
+  updateSatellites();
+  updateClusterBombs();
+  updateMigFighters();
+  updateInterceptors();
+  updateExplosions();
+  updateDebris();
+  checkCollisions();
+  tickLevel();
+  checkGameOver();
+
+  // Crosshair fade
+  if (crosshairTimer > 0) {
+    crosshairTimer--;
+    if (crosshairTimer === 0) hideCrosshairEl();
+  }
+}
+
+// ═══════════════════════════════════════════════════════
+// START
+// ═══════════════════════════════════════════════════════
+function startGame() {
+  document.getElementById('overlay').classList.add('hidden');
+  document.getElementById('ov-title').textContent = 'MISSILE\nCOMMAND';
+  document.getElementById('ov-title').className   = 'overlay-title';
+  document.getElementById('ov-sub').textContent   = 'DEFENDA SUA CIDADE';
+  document.getElementById('ov-stats').style.display = 'none';
+  document.getElementById('ov-btn').textContent   = '[ INICIAR ]';
+  initGame();
+  showLevelBanner('NÍVEL ' + level + ' / ' + MAX_LEVEL);
+}
+
+// ═══════════════════════════════════════════════════════
+// SOUND ENGINE — Web Audio API
+// ═══════════════════════════════════════════════════════
+let _ac = null;
+function getAC() {
+  if (!_ac) _ac = new (window.AudioContext || window.webkitAudioContext)();
+  if (_ac.state === 'suspended') _ac.resume();
+  return _ac;
+}
+
+// Master gain (volume global)
+let masterGain = null;
+function getMaster() {
+  if (masterGain) return masterGain;
+  const ac = getAC();
+  masterGain = ac.createGain();
+  masterGain.gain.value = 0.55;
+  masterGain.connect(ac.destination);
+  return masterGain;
+}
+
+// Utilitário: cria envelope attack/decay simples
+function makeEnv(ac, start, peak, end, t0, tAtk, tDec) {
+  const g = ac.createGain();
+  g.gain.setValueAtTime(start, t0);
+  g.gain.linearRampToValueAtTime(peak, t0 + tAtk);
+  g.gain.exponentialRampToValueAtTime(end, t0 + tAtk + tDec);
+  return g;
+}
+
+// ── DISPARO DO INTERCEPTADOR ─────────────────────────
+function sfxFire() {
+  try {
+    const ac = getAC(), t = ac.currentTime;
+    // Tom ascendente rápido (zip eletrônico)
+    const osc = ac.createOscillator();
+    osc.type = 'sawtooth';
+    osc.frequency.setValueAtTime(180, t);
+    osc.frequency.exponentialRampToValueAtTime(900, t + 0.18);
+
+    const env = makeEnv(ac, 0, 0.28, 0.001, t, 0.01, 0.18);
+    osc.connect(env);
+    env.connect(getMaster());
+    osc.start(t);
+    osc.stop(t + 0.22);
+  } catch(e) {}
+}
+
+// ── EXPLOSÃO DO INTERCEPTADOR (boom do jogador) ──────
+function sfxBoom(size) {
+  try {
+    const ac = getAC(), t = ac.currentTime;
+    const vol = Math.min(1, size / 80);
+
+    // Ruído branco filtrado = corpo da explosão
+    const bufLen = ac.sampleRate * 0.6;
+    const buf = ac.createBuffer(1, bufLen, ac.sampleRate);
+    const data = buf.getChannelData(0);
+    for (let i = 0; i < bufLen; i++) data[i] = Math.random() * 2 - 1;
+
+    const noise = ac.createBufferSource();
+    noise.buffer = buf;
+
+    const filter = ac.createBiquadFilter();
+    filter.type = 'bandpass';
+    filter.frequency.setValueAtTime(320, t);
+    filter.frequency.exponentialRampToValueAtTime(80, t + 0.5);
+    filter.Q.value = 1.2;
+
+    const env = makeEnv(ac, 0, vol * 0.7, 0.001, t, 0.008, 0.55);
+    noise.connect(filter);
+    filter.connect(env);
+    env.connect(getMaster());
+    noise.start(t);
+    noise.stop(t + 0.65);
+
+    // Sub-grave percussivo
+    const sub = ac.createOscillator();
+    sub.type = 'sine';
+    sub.frequency.setValueAtTime(90, t);
+    sub.frequency.exponentialRampToValueAtTime(28, t + 0.25);
+    const subEnv = makeEnv(ac, 0, vol * 0.6, 0.001, t, 0.004, 0.22);
+    sub.connect(subEnv);
+    subEnv.connect(getMaster());
+    sub.start(t);
+    sub.stop(t + 0.28);
+  } catch(e) {}
+}
+
+// ── IMPACTO NO CHÃO (explosão inimiga) ───────────────
+function sfxImpact() {
+  try {
+    const ac = getAC(), t = ac.currentTime;
+
+    const bufLen = ac.sampleRate * 0.5;
+    const buf = ac.createBuffer(1, bufLen, ac.sampleRate);
+    const data = buf.getChannelData(0);
+    for (let i = 0; i < bufLen; i++) data[i] = Math.random() * 2 - 1;
+
+    const noise = ac.createBufferSource();
+    noise.buffer = buf;
+
+    const filter = ac.createBiquadFilter();
+    filter.type = 'lowpass';
+    filter.frequency.setValueAtTime(600, t);
+    filter.frequency.exponentialRampToValueAtTime(60, t + 0.4);
+
+    const env = makeEnv(ac, 0, 0.5, 0.001, t, 0.005, 0.42);
+    noise.connect(filter);
+    filter.connect(env);
+    env.connect(getMaster());
+    noise.start(t);
+    noise.stop(t + 0.5);
+
+    // Tom grave de impacto
+    const osc = ac.createOscillator();
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(55, t);
+    osc.frequency.exponentialRampToValueAtTime(18, t + 0.3);
+    const oscEnv = makeEnv(ac, 0, 0.45, 0.001, t, 0.003, 0.28);
+    osc.connect(oscEnv);
+    oscEnv.connect(getMaster());
+    osc.start(t);
+    osc.stop(t + 0.32);
+  } catch(e) {}
+}
+
+// ── CIDADE DESTRUÍDA (boom + decaimento longo) ────────
+function sfxCityDown() {
+  try {
+    const ac = getAC(), t = ac.currentTime;
+
+    const bufLen = ac.sampleRate * 1.0;
+    const buf = ac.createBuffer(1, bufLen, ac.sampleRate);
+    const data = buf.getChannelData(0);
+    for (let i = 0; i < bufLen; i++) data[i] = Math.random() * 2 - 1;
+
+    const noise = ac.createBufferSource();
+    noise.buffer = buf;
+
+    const filter = ac.createBiquadFilter();
+    filter.type = 'lowpass';
+    filter.frequency.setValueAtTime(800, t);
+    filter.frequency.exponentialRampToValueAtTime(40, t + 0.9);
+
+    const env = makeEnv(ac, 0, 0.85, 0.001, t, 0.006, 0.9);
+    noise.connect(filter);
+    filter.connect(env);
+    env.connect(getMaster());
+    noise.start(t);
+    noise.stop(t + 1.0);
+
+    // Rugido grave descendente
+    const osc = ac.createOscillator();
+    osc.type = 'sawtooth';
+    osc.frequency.setValueAtTime(80, t);
+    osc.frequency.exponentialRampToValueAtTime(15, t + 0.7);
+    const oscEnv = makeEnv(ac, 0, 0.55, 0.001, t, 0.005, 0.65);
+    osc.connect(oscEnv);
+    oscEnv.connect(getMaster());
+    osc.start(t);
+    osc.stop(t + 0.75);
+  } catch(e) {}
+}
+
+// ── AVANÇAR DE NÍVEL (fanfarra curta) ────────────────
+function sfxLevelUp() {
+  try {
+    const ac = getAC();
+    const notes = [440, 554, 659, 880];
+    notes.forEach((freq, i) => {
+      const t = ac.currentTime + i * 0.1;
+      const osc = ac.createOscillator();
+      osc.type = 'square';
+      osc.frequency.value = freq;
+      const env = makeEnv(ac, 0, 0.2, 0.001, t, 0.01, 0.1);
+      osc.connect(env);
+      env.connect(getMaster());
+      osc.start(t);
+      osc.stop(t + 0.14);
+    });
+  } catch(e) {}
+}
+
+// ── GAME OVER (sequência descendente sombria) ─────────
+function sfxGameOver() {
+  try {
+    const ac = getAC();
+    const notes = [330, 247, 185, 123];
+    notes.forEach((freq, i) => {
+      const t = ac.currentTime + i * 0.22;
+      const osc = ac.createOscillator();
+      osc.type = 'sawtooth';
+      osc.frequency.value = freq;
+      const env = makeEnv(ac, 0, 0.3, 0.001, t, 0.015, 0.22);
+      osc.connect(env);
+      env.connect(getMaster());
+      osc.start(t);
+      osc.stop(t + 0.26);
+    });
+  } catch(e) {}
+}
+
+// ── VITÓRIA ───────────────────────────────────────────
+function sfxVictory() {
+  try {
+    const ac = getAC();
+    const notes = [523, 659, 784, 1047, 784, 1047];
+    const durs  = [0.1, 0.1, 0.1, 0.2,  0.1, 0.3];
+    let t = ac.currentTime;
+    notes.forEach((freq, i) => {
+      const osc = ac.createOscillator();
+      osc.type = 'square';
+      osc.frequency.value = freq;
+      const env = makeEnv(ac, 0, 0.22, 0.001, t, 0.01, durs[i]);
+      osc.connect(env);
+      env.connect(getMaster());
+      osc.start(t);
+      osc.stop(t + durs[i] + 0.02);
+      t += durs[i] + 0.04;
+    });
+  } catch(e) {}
+}
+
+// ── HOOK: intercepta os eventos do jogo para tocar sons ──
+
+// Som no disparo
+const _origFire = fire;
+fire = function(tx, ty) {
+  const before = interceptors.length;
+  _origFire(tx, ty);
+  if (interceptors.length > before) sfxFire();
+};
+
+// Som na explosão: intercepta addExplosion
+const _origAddExplosion = addExplosion;
+addExplosion = function(x, y, maxR, color, ground) {
+  _origAddExplosion(x, y, maxR, color, ground);
+  if (ground) {
+    sfxImpact();
+  } else {
+    sfxBoom(maxR);
+  }
+};
+
+// Som de cidade destruída: intercepta checkCollisions
+const _origCheckCollisions = checkCollisions;
+checkCollisions = function() {
+  const citiesBefore = cities.filter(c => c.alive).length;
+  _origCheckCollisions();
+  const citiesAfter = cities.filter(c => c.alive).length;
+  if (citiesAfter < citiesBefore) sfxCityDown();
+};
+
+// Som de level up / game over / vitória
+const _origAdvanceLevel = advanceLevel;
+advanceLevel = function() {
+  const lvlBefore = level;
+  _origAdvanceLevel();
+  if (running && level > lvlBefore) sfxLevelUp();
+};
+
+const _origShowGameOver = showGameOver;
+showGameOver = function() {
+  sfxGameOver();
+  _origShowGameOver();
+};
+
+const _origShowVictory = showVictory;
+showVictory = function() {
+  sfxVictory();
+  _origShowVictory();
+};
+
+// Init stars for title screen, then start the render loop
+initStars();
+loop();
+</script>
+</body>
+</html>
